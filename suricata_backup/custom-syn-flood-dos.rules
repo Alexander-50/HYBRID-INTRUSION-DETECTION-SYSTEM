@@ -1,0 +1,2 @@
+#alert tcp any any -> $HOME_NET any (msg:"POSSIBLE SYN FLOOD"; flags:S; detection_filter:track by_src, count 3500, seconds 1; classtype:attempted-dos; sid:1000001; rev:1;)
+alert tcp any any -> $HOME_NET any (msg:"POSSIBLE SYN FLOOD"; flags:S; detection_filter:track by_src, count 4000, seconds 1; classtype:attempted-dos; priority:1; sid:1000001; rev:2;)

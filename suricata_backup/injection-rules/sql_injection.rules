@@ -1,0 +1,46 @@
+# SQL Injection Detection Rules (Optimized with Priority)
+
+# -----------------------------
+# BOOLEAN-BASED SQLi
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - OR boolean"; flow:to_server,established;   pcre:"/(\bor\b)\s+\d+\s*=\s*\d+/i"; priority:1; sid:2000001; rev:1;)
+
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - AND boolean"; flow:to_server,established;   pcre:"/\band\b\s+\d+\s*=\s*\d+/i"; priority:1; sid:2000002; rev:1;)
+
+# -----------------------------
+# COMMENT DETECTION
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - Double dash comment"; flow:to_server,established;   pcre:"/--[^\r\n]*/"; priority:1; sid:2000003; rev:2;)
+
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - Block comment"; flow:to_server,established;   pcre:"/\/\*.*?\*\//"; priority:1; sid:2000004; rev:2;)
+
+# -----------------------------
+# UNION-BASED SQLi
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - UNION SELECT"; flow:to_server,established;   pcre:"/union\s+(all\s+)?select/i"; priority:1; sid:2000005; rev:1; threshold:type limit, track by_src, count 5, seconds 60;)
+
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - UNION NULL enum"; flow:to_server,established;   pcre:"/union\s+(all\s+)?select\s+(null|[0-9]+)(\s*,\s*(null|[0-9]+))+/i"; priority:1; sid:2000006; rev:1; threshold:type limit, track by_src, count 5, seconds 60;)
+
+# -----------------------------
+# TIME-BASED SQLi
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - BENCHMARK()"; flow:to_server,established;   pcre:"/benchmark\s*\(/i"; priority:1; sid:2000007; rev:1;)
+
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - WAITFOR DELAY"; flow:to_server,established;   pcre:"/waitfor\s+(delay|time)/i"; priority:1; sid:2000008; rev:1;)
+
+# -----------------------------
+# ERROR-BASED SQLi
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - EXTRACTVALUE"; flow:to_server,established;   pcre:"/extractvalue\s*\(/i"; priority:1; sid:2000009; rev:1;)
+
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - UPDATEXML"; flow:to_server,established;   pcre:"/updatexml\s*\(/i"; priority:1; sid:2000010; rev:1;)
+
+# -----------------------------
+# GENERIC SELECT DETECTION (LOW PRIORITY)
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - SELECT FROM"; flow:to_server,established;   pcre:"/select\s+.*\s+from/i"; priority:3; sid:2000011; rev:1; threshold:type limit, track by_src, count 5, seconds 60;)
+
+# -----------------------------
+# EVASION / OBFUSCATION
+# -----------------------------
+alert tcp any any -> $HTTP_SERVERS $HTTP_PORTS (msg:"SQLi - Comment Obfuscation"; flow:to_server,established;   pcre:"/\/\*.*?\*\/.*(union|select)/i"; priority:1; sid:2000012; rev:1;)

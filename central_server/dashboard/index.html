@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>HYBRID IDS</title>
+    <!-- Modern Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Background Decorators -->
+    <div class="background-grid"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+    <div class="glow-orb orb-3"></div>
+
+    <div class="layout">
+        <!-- Sidebar -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">✧</span>
+                    HYBRID<span class="text-gradient">_IDS</span>
+                </div>
+                <div class="connection-status" id="connectionStatus">● Secure Connection</div>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-target="page-overview">
+                    <span class="icon">⊞</span> Overview
+                </a>
+                <a href="#" class="nav-item" data-target="page-telemetry">
+                    <span class="icon">📊</span> Telemetry
+                </a>
+                <a href="#" class="nav-item" data-target="page-alerts">
+                    <span class="icon">🚨</span> Threat Log
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-label">GLOBAL THREAT LEVEL</div>
+                <div id="threatLevel" class="threat-level-badge level-low">LOW</div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="topbar">
+                <h2 id="pageTitle" class="text-gradient">OVERVIEW</h2>
+            </header>
+            
+            <div class="scroll-container">
+                <!-- PAGE: OVERVIEW -->
+                <div id="page-overview" class="page active fade-enter">
+                    <section class="metrics-grid">
+                        <div class="metric-card glass-panel">
+                            <div class="metric-icon" style="background: rgba(6, 182, 212, 0.1); color: var(--accent-cyan);">◂▸</div>
+                            <div class="metric-content">
+                                <span class="metric-label">TOTAL ALERTS</span>
+                                <span id="totalAlerts" class="metric-value">0</span>
+                            </div>
+                        </div>
+                        <div class="metric-card glass-panel">
+                            <div class="metric-icon" style="background: rgba(139, 92, 246, 0.1); color: var(--accent-purple);">⚡</div>
+                            <div class="metric-content">
+                                <span class="metric-label">ALERTS / SEC</span>
+                                <span id="alertsPerSec" class="metric-value">0.0</span>
+                            </div>
+                        </div>
+                        <div class="metric-card glass-panel">
+                            <div class="metric-icon" style="background: rgba(244, 63, 94, 0.1); color: var(--accent-rose);">⌖</div>
+                            <div class="metric-content">
+                                <span class="metric-label">ACTIVE TYPES</span>
+                                <span id="activeTypes" class="metric-value">0</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="metrics-grid">
+                        <div class="metric-card glass-panel border-rose">
+                            <div class="metric-content">
+                                <span class="metric-label">SIDS DETECTIONS</span>
+                                <span id="sidsCount" class="metric-value text-rose">0</span>
+                            </div>
+                        </div>
+                        <div class="metric-card glass-panel border-purple">
+                            <div class="metric-content">
+                                <span class="metric-label">AIDS ANOMALIES</span>
+                                <span id="aidsCount" class="metric-value text-purple">0</span>
+                            </div>
+                        </div>
+                        <div class="metric-card glass-panel border-cyan">
+                            <div class="metric-content">
+                                <span class="metric-label">HYBRID FUSION</span>
+                                <span id="hybridCount" class="metric-value text-cyan">0</span>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="visuals-grid" style="grid-template-columns: 1fr;">
+                        <div class="visual-panel glass-panel chart-container">
+                            <div class="panel-header">
+                                <h3>Attack Timeline <span class="text-muted">(Last 60s)</span></h3>
+                                <select id="timelineFilter" class="modern-select">
+                                    <option value="total">ALL ALERTS</option>
+                                    <option value="dos">DOS</option>
+                                    <option value="recon">RECON</option>
+                                    <option value="sqli">SQLI</option>
+                                </select>
+                            </div>
+                            <canvas id="timelineChart"></canvas>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- PAGE: TELEMETRY -->
+                <div id="page-telemetry" class="page">
+                    <section class="visuals-grid">
+                        <div class="visual-panel glass-panel chart-container">
+                            <h3>Category Distribution</h3>
+                            <canvas id="attackTypeChart"></canvas>
+                        </div>
+                        <div class="visual-panel glass-panel chart-container">
+                            <h3>Subtype Analytics</h3>
+                            <canvas id="subtypeChart"></canvas>
+                        </div>
+                    </section>
+                    
+                    <section class="visuals-grid" style="grid-template-columns: 1fr;">
+                        <div class="visual-panel glass-panel">
+                            <h3>Attack Heat Matrix</h3>
+                            <div id="heatIndicatorContainer" class="heat-bars">
+                                Awaiting telemetry...
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="visuals-grid">
+                        <div class="visual-panel glass-panel table-wrapper">
+                            <h3>Network Connections</h3>
+                            <table class="modern-table">
+                                <thead><tr><th>Source</th><th>Destination</th><th>Type</th><th>Count</th></tr></thead>
+                                <tbody id="connectionsTableBody"></tbody>
+                            </table>
+                        </div>
+                        <div class="visual-panel glass-panel table-wrapper">
+                            <h3>Top Aggressors</h3>
+                            <table class="modern-table">
+                                <thead><tr><th>Source IP</th><th>Alerts</th></tr></thead>
+                                <tbody id="attackersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- PAGE: ALERTS -->
+                <div id="page-alerts" class="page">
+                    <section class="alerts-panel glass-panel">
+                        <div class="panel-header" style="margin-bottom: 1.5rem; padding: 0 0.5rem;">
+                            <h3>Real-Time Threat Log</h3>
+                            <div class="filters">
+                                <select id="filterType" class="modern-select">
+                                    <option value="ALL">ALL TYPES</option>
+                                    <option value="DOS">DOS</option>
+                                    <option value="RECON">RECON</option>
+                                    <option value="SQLI">SQLI</option>
+                                </select>
+                                <select id="filterSeverity" class="modern-select">
+                                    <option value="ALL">ALL SEVERITIES</option>
+                                    <option value="1">HIGH (1)</option>
+                                    <option value="2">MEDIUM (2)</option>
+                                    <option value="3">LOW (3)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="table-wrapper">
+                            <table class="modern-table cyber-table">
+                                <thead>
+                                    <tr>
+                                        <th>TIMESTAMP</th>
+                                        <th>SOURCE IP</th>
+                                        <th>DEST IP</th>
+                                        <th>TYPE</th>
+                                        <th>SUBTYPE</th>
+                                        <th>ENGINE</th>
+                                        <th>SEV</th>
+                                        <th>CONF</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alertsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+                
+                <!-- Spacer for scrolling -->
+                <div style="height: 2rem;"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Intelligence Modal -->
+    <div id="signatureModal" class="modal">
+        <div class="modal-content glass-panel">
+            <div class="modal-header">
+                <h2 class="modal-title text-gradient">INTELLIGENCE REPORT</h2>
+                <button class="icon-btn" onclick="document.getElementById('signatureModal').classList.remove('active')">✕</button>
+            </div>
+            <div id="modalDetails" class="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

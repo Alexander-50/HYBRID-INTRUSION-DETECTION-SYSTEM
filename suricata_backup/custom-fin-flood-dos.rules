@@ -1,0 +1,2 @@
+alert tcp any any -> $HOME_NET any (msg:"POSSIBLE FIN FLOOD"; flags:F; dsize:0; detection_filter:track by_src, count 3500, seconds 1; classtype:attempted-dos; priority:1; sid:1000005; rev:2;)
+#alert tcp any any -> $HOME_NET any (msg:"POSSIBLE FIN FLOOD"; flags:F; dsize:0; detection_filter:track by_src, count 3500, seconds 1; classtype:attempted-dos; sid:1000005; rev:1;)

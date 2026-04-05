@@ -1,0 +1,2 @@
+alert udp any any -> $HOME_NET any (msg:"POSSIBLE UDP FLOOD"; dsize:<200; detection_filter:track by_src, count 3500, seconds 1; classtype:attempted-dos; priority:1; sid:1000006; rev:2;)
+#alert udp any any -> $HOME_NET any (msg:"POSSIBLE UDP FLOOD"; dsize:<200; detection_filter:track by_src, count 3500, seconds 1; classtype:attempted-dos; sid:1000006; rev:1;)

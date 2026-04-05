@@ -1,0 +1,166 @@
+<?php
+// ⚠️ INTENTIONALLY VULNERABLE FOR TESTING ONLY - DO NOT USE IN PRODUCTION
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$host = 'localhost';
+$db = 'testlab';
+$user = 'root';
+$pass = 'root';
+
+$conn = new mysqli($host, $user, $pass, $db);
+if ($conn->connect_error) die("Connection failed: " . $conn->connect_error);
+
+$login_error = '';
+$login_success = '';
+$sql_query = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['logout'])) {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $source_ip = $_SERVER['REMOTE_ADDR'];
+    
+    // ❌ VULNERABLE: Direct SQL concatenation
+    $sql = "SELECT * FROM users WHERE username = '" . $username . "' AND password = '" . $password . "'";
+    $sql_query = htmlspecialchars($sql);
+    
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $_SESSION['username'] = $row['username'];
+        $_SESSION['role'] = $row['role'];
+        $login_success = "✅ Login successful! Welcome, " . htmlspecialchars($row['username']);
+        
+        // Log successful attempt
+        $log_sql = "INSERT INTO login_attempts (username, password_attempt, source_ip, success) 
+                    VALUES ('" . addslashes($username) . "', '" . addslashes($password) . "', '" . $source_ip . "', 1)";
+        $conn->query($log_sql);
+    } else {
+        $login_error = "❌ Invalid credentials";
+        
+        // Log failed attempt
+        $log_sql = "INSERT INTO login_attempts (username, password_attempt, source_ip, success) 
+                    VALUES ('" . addslashes($username) . "', '" . addslashes($password) . "', '" . $source_ip . "', 0)";
+        $conn->query($log_sql);
+    }
+}
+
+$is_logged_in = isset($_SESSION['username']);
+$current_user = $_SESSION['username'] ?? 'Guest';
+$current_role = $_SESSION['role'] ?? 'none';
+
+if (isset($_POST['logout'])) {
+    session_destroy();
+    header("Location: " . $_SERVER['PHP_SELF']);
+    exit;
+}
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SQL Injection Test Lab - Vulnerable</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .container { max-width: 600px; width: 90%; background: white; padding: 40px; border-radius: 10px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        h1 { color: #333; margin-bottom: 10px; text-align: center; }
+        .subtitle { color: #666; text-align: center; margin-bottom: 25px; font-size: 14px; }
+        .warning { background: #fff3cd; border: 2px solid #ffc107; color: #856404; padding: 15px; margin-bottom: 20px; border-radius: 5px; font-size: 13px; line-height: 1.6; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; color: #333; font-weight: 600; font-size: 14px; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px; transition: border-color 0.3s; }
+        input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: #667eea; }
+        button { width: 100%; padding: 12px; background: #667eea; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: 600; transition: background 0.3s; }
+        button:hover { background: #5568d3; }
+        .error { background: #f8d7da; border: 2px solid #f5c6cb; color: #721c24; padding: 12px; margin-bottom: 15px; border-radius: 5px; }
+        .success { background: #d4edda; border: 2px solid #c3e6cb; color: #155724; padding: 12px; margin-bottom: 15px; border-radius: 5px; }
+        .info { background: #d1ecf1; border: 2px solid #bee5eb; color: #0c5460; padding: 12px; margin-bottom: 15px; border-radius: 5px; font-size: 13px; }
+        .credentials { background: #f8f9fa; border: 1px solid #dee2e6; padding: 15px; margin: 20px 0; border-radius: 5px; }
+        .credentials h4 { margin-bottom: 10px; color: #333; font-size: 14px; }
+        .credentials p { margin: 8px 0; font-size: 13px; font-family: monospace; color: #555; }
+        .debug { background: #f5f5f5; border: 1px solid #ddd; padding: 12px; margin-top: 20px; border-radius: 5px; font-family: monospace; font-size: 11px; word-break: break-all; color: #333; }
+        .logout-btn { background: #dc3545; margin-top: 10px; }
+        .logout-btn:hover { background: #c82333; }
+        .session-info { background: #e7f3ff; border: 1px solid #b3d9ff; color: #004085; padding: 12px; margin-top: 15px; border-radius: 5px; font-size: 12px; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 SQL Injection Lab</h1>
+        <p class="subtitle">Intentionally Vulnerable - Testing Only</p>
+        
+        <div class="warning">
+            ⚠️ <strong>WARNING:</strong> This login page is intentionally vulnerable for security testing/educational purposes only. 
+            <strong>DO NOT use this code in production.</strong> Always use prepared statements in real applications.
+        </div>
+
+        <?php if ($is_logged_in): ?>
+            <div class="success">✅ Logged in as: <strong><?php echo htmlspecialchars($current_user); ?></strong> (Role: <?php echo htmlspecialchars($current_role); ?>)</div>
+            
+            <form method="POST">
+                <button type="submit" name="logout" class="logout-btn">Logout</button>
+            </form>
+            
+            <div class="session-info">
+                Session active since: <?php echo date('Y-m-d H:i:s'); ?><br>
+                Your IP: <?php echo htmlspecialchars($_SERVER['REMOTE_ADDR']); ?>
+            </div>
+        <?php else: ?>
+            <?php if ($login_error): ?>
+                <div class="error"><?php echo $login_error; ?></div>
+            <?php endif; ?>
+            
+            <?php if ($login_success): ?>
+                <div class="success"><?php echo $login_success; ?></div>
+            <?php endif; ?>
+
+            <div class="credentials">
+                <h4>📝 Test Credentials (for legitimate login):</h4>
+                <p>Username: <code>admin</code> | Password: <code>admin123</code></p>
+                <p>Username: <code>user1</code> | Password: <code>pass123</code></p>
+                <p>Username: <code>user2</code> | Password: <code>pass456</code></p>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required 
+                           placeholder="e.g. admin' OR 1=1 -- or admin' AND SLEEP(5) --">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required 
+                           placeholder="Any value for SQL injection tests">
+                </div>
+                
+                <button type="submit">Login</button>
+            </form>
+
+            <div class="info">
+                💡 <strong>For Testing SQL Injection Payloads:</strong><br>
+                Try entering SQL injection patterns in the username field. 
+                Check your Suricata alerts to see if they're detected by the IDS rules.
+            </div>
+        <?php endif; ?>
+
+        <?php if ($sql_query): ?>
+            <div class="debug">
+                <strong>Generated SQL Query:</strong><br>
+                <code><?php echo $sql_query; ?></code>
+            </div>
+        <?php endif; ?>
+
+        <div style="margin-top: 25px; padding-top: 15px; border-top: 1px solid #eee; font-size: 11px; color: #999;">
+            Server: <?php echo htmlspecialchars($_SERVER['SERVER_ADDR'] ?? 'N/A'); ?> | 
+            Client IP: <?php echo htmlspecialchars($_SERVER['REMOTE_ADDR']); ?> | 
+            PHP: <?php echo phpversion(); ?>
+        </div>
+    </div>
+</body>
+</html>
+
+<?php $conn->close(); ?>

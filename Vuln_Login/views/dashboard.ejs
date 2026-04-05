@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Injection Lab - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-gradient); color: var(--text-primary); padding: 40px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th, td { padding: 16px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: rgba(255, 255, 255, 0.02); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; font-size: 11px; }
+        .payload { font-family: monospace; color: #67e8f9; }
+        .status-success { color: #86efac; }
+        .status-failed { color: #fca5a5; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Lab Dashboard</h1>
+        <p style="margin-bottom: 32px; color: var(--text-secondary);">Monitoring Login Attempts</p>
+        <div class="card">
+            <table>
+                <thead><tr><th>ID</th><th>User / Payload</th><th>Status</th><th>IP</th><th>Time</th></tr></thead>
+                <tbody>
+                    <% attempts.forEach(attempt => { %>
+                        <tr>
+                            <td>#<%= attempt.id %></td>
+                            <td><strong><%= attempt.username %></strong><br><span class="payload"><%= attempt.password_attempt %></span></td>
+                            <td class="<%= attempt.success ? 'status-success' : 'status-failed' %>"><%= attempt.success ? 'Success' : 'Failed' %></td>
+                            <td><%= attempt.source_ip %></td>
+                            <td><%= new Date(attempt.attempt_time).toLocaleTimeString() %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 32px; text-align: center;"><a href="/login" style="color: var(--text-secondary); text-decoration: none;">Back to Lab</a></div>
+    </div>
+</body>
+</html>

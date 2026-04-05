@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Injection Test Lab - <%= type === 'vulnerable' ? 'Vulnerable' : 'Secure' %></title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --border: rgba(255, 255, 255, 0.1);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --error: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-gradient);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container { width: 100%; max-width: 480px; padding: 20px; }
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 48px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: <%= type === 'vulnerable' ? 'var(--error)' : 'var(--success)' %>;
+        }
+
+        h1 { font-family: 'Outfit', sans-serif; font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+        .alert { padding: 16px; border-radius: 12px; margin-bottom: 24px; font-size: 14px; }
+        .alert-error { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .alert-success { background: rgba(34, 197, 94, 0.1); border: 1px solid rgba(34, 197, 94, 0.2); color: #86efac; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
+        input { width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border); border-radius: 12px; padding: 14px; color: white; font-size: 15px; }
+
+        button { width: 100%; background: var(--primary); color: white; border: none; border-radius: 12px; padding: 14px; font-weight: 600; cursor: pointer; }
+        .nav-links { display: flex; justify-content: center; gap: 24px; margin-top: 32px; }
+        .nav-links a { color: var(--text-secondary); text-decoration: none; font-size: 13px; }
+        .debug { margin-top: 24px; background: #000; padding: 16px; border-radius: 12px; font-family: monospace; font-size: 12px; color: #a5f3fc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div style="text-align: center; margin-bottom: 32px;">
+                <h1><%= type === 'vulnerable' ? '🔓 Vulnerable' : '🔐 Secure' %> Lab</h1>
+                <p class="subtitle">SQL Injection Testing Environment</p>
+            </div>
+
+            <% if (success) { %><div class="alert alert-success">✅ <%= success %></div><% } %>
+            <% if (error) { %><div class="alert alert-error">⚠️ <%= error %></div><% } %>
+
+            <% if (user) { %>
+                <div style="text-align: center;">
+                    <p style="margin-bottom: 24px;">Logged in as: <%= user.username %></p>
+                    <form action="/logout" method="POST">
+                        <button type="submit" style="background: transparent; border: 1px solid var(--border);">Logout Session</button>
+                    </form>
+                </div>
+            <% } else { %>
+                <form action="/<%= type === 'vulnerable' ? 'login' : 'login-secure' %>" method="POST">
+                    <div class="form-group"><label>Username</label><input type="text" name="username" required></div>
+                    <div class="form-group"><label>Password</label><input type="password" name="password" required></div>
+                    <button type="submit">Sign In</button>
+                </form>
+            <% } %>
+
+            <% if (query) { %><div class="debug"><strong>Executed Query:</strong><br><code><%= query %></code></div><% } %>
+
+            <div class="nav-links">
+                <a href="/login">Vulnerable</a>
+                <a href="/login-secure">Secure</a>
+                <a href="/dashboard">Dashboard</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,771 @@
+# SQL Injection Testing Login Page - Complete Development Guide
+
+## Environment Setup
+
+### Requirement Checklist
+- [ ] Linux server (Ubuntu 20.04+)
+- [ ] Apache/Nginx web server
+- [ ] PHP 7.4+ OR Node.js (for vulnerable code)
+- [ ] MySQL/MariaDB database
+- [ ] Suricata running with your SQL injection rules
+- [ ] Network ability to capture traffic on the web server
+- [ ] Isolated lab environment (NOT production)
+
+---
+
+## Step 1: Create Database
+
+### MySQL Setup
+
+```bash
+# Connect to MySQL
+mysql -u root -p
+
+# Create database
+CREATE DATABASE testlab;
+USE testlab;
+
+# Create users table
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100),
+  role VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+# Insert test users
+INSERT INTO users (username, password, email, role) VALUES
+('admin', 'admin123', 'admin@test.local', 'admin'),
+('user1', 'pass123', 'user1@test.local', 'user'),
+('user2', 'pass456', 'user2@test.local', 'user'),
+('testuser', 'testpass', 'test@test.local', 'user');
+
+# Create logs table (for tracking attempts)
+CREATE TABLE login_attempts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100),
+  password_attempt VARCHAR(255),
+  source_ip VARCHAR(45),
+  success BOOLEAN,
+  attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+# Show tables
+SHOW TABLES;
+DESCRIBE users;
+EXIT;
+```
+
+---
+
+## Step 2: Vulnerable PHP Login Page
+
+### File: `/var/www/html/login_vulnerable.php`
+
+This page is **INTENTIONALLY VULNERABLE** for testing only.
+
+```php
+<?php
+// ⚠️ WARNING: INTENTIONALLY VULNERABLE FOR TESTING ONLY ⚠️
+// DO NOT USE IN PRODUCTION
+
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$host = 'localhost';
+$db = 'testlab';
+$user = 'root';
+$pass = 'root_password';
+
+// Create connection
+$conn = new mysqli($host, $user, $pass, $db);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+$login_error = '';
+$login_success = '';
+$sql_query = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $source_ip = $_SERVER['REMOTE_ADDR'];
+    
+    // ❌ VULNERABLE: Direct concatenation without prepared statements
+    // This is intentionally vulnerable for testing
+    $sql = "SELECT * FROM users WHERE username = '" . $username . "' AND password = '" . $password . "'";
+    
+    // Store query for display (for testing)
+    $sql_query = htmlspecialchars($sql);
+    
+    // Log the attempt
+    $log_sql = "INSERT INTO login_attempts (username, password_attempt, source_ip, success) 
+                VALUES ('" . addslashes($username) . "', '" . addslashes($password) . "', '" . $source_ip . "', 0)";
+    
+    $result = $conn->query($sql);
+    
+    if ($result && $result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $_SESSION['username'] = $row['username'];
+        $_SESSION['role'] = $row['role'];
+        
+        // Update login attempt as successful
+        $success_log = "UPDATE login_attempts SET success = 1 WHERE source_ip = '" . $source_ip . "' ORDER BY attempt_time DESC LIMIT 1";
+        $conn->query($success_log);
+        
+        $login_success = "Login successful! Welcome, " . htmlspecialchars($row['username']);
+    } else {
+        $login_error = "Invalid credentials";
+        $conn->query($log_sql);
+    }
+}
+
+// Check if already logged in
+$is_logged_in = isset($_SESSION['username']) ? true : false;
+$current_user = $_SESSION['username'] ?? 'Guest';
+$current_role = $_SESSION['role'] ?? 'none';
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SQL Injection Test - Login Page</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 50px auto; background: white; padding: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 14px; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #0056b3; }
+        .error { color: #d9534f; padding: 10px; background: #f2dede; border: 1px solid #ebcccc; border-radius: 3px; margin-bottom: 15px; }
+        .success { color: #5cb85c; padding: 10px; background: #dff0d8; border: 1px solid #d6e9c6; border-radius: 3px; margin-bottom: 15px; }
+        .info { background: #d9edf7; border: 1px solid #bce8f1; color: #31708f; padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        .warning { background: #fcf8e3; border: 1px solid #faebcc; color: #8a6d3b; padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        .debug { background: #f8f8f8; border: 1px solid #ddd; padding: 10px; margin-top: 20px; border-radius: 3px; font-family: monospace; font-size: 12px; }
+        .logout { background: #dc3545; margin-top: 10px; }
+        .logout:hover { background: #c82333; }
+        .test-credentials { background: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; margin-bottom: 15px; border-radius: 3px; }
+        .test-credentials h4 { margin-bottom: 10px; }
+        .test-credentials p { margin: 5px 0; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 SQL Injection Test Lab</h1>
+        
+        <div class="warning">
+            ⚠️ <strong>WARNING:</strong> This page is INTENTIONALLY VULNERABLE for security testing only.
+            DO NOT use this code in production.
+        </div>
+
+        <?php if ($is_logged_in): ?>
+            <div class="success">✅ <?php echo $login_success ?: "You are logged in as: " . htmlspecialchars($current_user) . " (Role: " . htmlspecialchars($current_role) . ")"; ?></div>
+            <form method="POST">
+                <button type="submit" name="logout" class="logout">Logout</button>
+            </form>
+        <?php else: ?>
+            <?php if ($login_error): ?>
+                <div class="error">❌ <?php echo $login_error; ?></div>
+            <?php endif; ?>
+            
+            <?php if ($login_success): ?>
+                <div class="success">✅ <?php echo $login_success; ?></div>
+            <?php endif; ?>
+
+            <div class="test-credentials">
+                <h4>📝 Test Credentials:</h4>
+                <p><strong>Username:</strong> admin | <strong>Password:</strong> admin123</p>
+                <p><strong>Username:</strong> user1 | <strong>Password:</strong> pass123</p>
+                <p><strong>Username:</strong> user2 | <strong>Password:</strong> pass456</p>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required placeholder="Enter username or SQL injection payload">
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter password or SQL injection payload">
+                </div>
+                
+                <button type="submit">Login</button>
+            </form>
+
+            <div class="info">
+                💡 <strong>For Testing:</strong> Try SQL injection payloads in the username or password fields.
+                Check Suricata alerts to see if they're detected.
+            </div>
+        <?php endif; ?>
+
+        <?php if ($sql_query): ?>
+            <div class="debug">
+                <strong>Generated SQL Query:</strong><br>
+                <code><?php echo $sql_query; ?></code>
+            </div>
+        <?php endif; ?>
+
+        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
+            Current IP: <?php echo htmlspecialchars($_SERVER['REMOTE_ADDR']); ?><br>
+            Logged in as: <?php echo htmlspecialchars($current_user); ?><br>
+            PHP Version: <?php echo phpversion(); ?>
+        </div>
+    </div>
+</body>
+</html>
+
+<?php
+$conn->close();
+
+// Handle logout
+if (isset($_POST['logout'])) {
+    session_destroy();
+    header("Location: login_vulnerable.php");
+    exit;
+}
+?>
+```
+
+---
+
+## Step 3: Secure Login Page (For Comparison)
+
+### File: `/var/www/html/login_secure.php`
+
+This page uses **prepared statements** (best practice).
+
+```php
+<?php
+// ✅ SECURE VERSION - Uses Prepared Statements
+
+session_start();
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+$host = 'localhost';
+$db = 'testlab';
+$user = 'root';
+$pass = 'root_password';
+
+$conn = new mysqli($host, $user, $pass, $db);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+$login_error = '';
+$login_success = '';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $username = $_POST['username'] ?? '';
+    $password = $_POST['password'] ?? '';
+    $source_ip = $_SERVER['REMOTE_ADDR'];
+    
+    // ✅ SECURE: Using prepared statements
+    $stmt = $conn->prepare("SELECT * FROM users WHERE username = ? AND password = ?");
+    $stmt->bind_param("ss", $username, $password);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    // Log attempt (also secure)
+    $log_stmt = $conn->prepare("INSERT INTO login_attempts (username, password_attempt, source_ip, success) VALUES (?, ?, ?, ?)");
+    
+    if ($result->num_rows > 0) {
+        $row = $result->fetch_assoc();
+        $_SESSION['username'] = $row['username'];
+        $_SESSION['role'] = $row['role'];
+        $success = true;
+        $log_stmt->bind_param("sisi", $username, $password, $source_ip, $success);
+        $login_success = "Login successful! Welcome, " . htmlspecialchars($row['username']);
+    } else {
+        $login_error = "Invalid credentials";
+        $success = false;
+        $log_stmt->bind_param("sisi", $username, $password, $source_ip, $success);
+    }
+    
+    $log_stmt->execute();
+    $stmt->close();
+    $log_stmt->close();
+}
+
+$is_logged_in = isset($_SESSION['username']) ? true : false;
+$current_user = $_SESSION['username'] ?? 'Guest';
+$current_role = $_SESSION['role'] ?? 'none';
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Secure Login Page</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; }
+        .container { max-width: 500px; margin: 50px auto; background: white; padding: 30px; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        h1 { color: #333; margin-bottom: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: bold; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 3px; font-size: 14px; }
+        button { width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #218838; }
+        .success { color: #5cb85c; padding: 10px; background: #dff0d8; border: 1px solid #d6e9c6; border-radius: 3px; margin-bottom: 15px; }
+        .error { color: #d9534f; padding: 10px; background: #f2dede; border: 1px solid #ebcccc; border-radius: 3px; margin-bottom: 15px; }
+        .info { background: #d9edf7; border: 1px solid #bce8f1; color: #31708f; padding: 10px; margin-bottom: 15px; border-radius: 3px; }
+        .logout { background: #dc3545; margin-top: 10px; }
+        .logout:hover { background: #c82333; }
+        .test-credentials { background: #d4edda; border: 1px solid #c3e6cb; padding: 15px; margin-bottom: 15px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔒 Secure Login Page</h1>
+        
+        <div class="info">
+            ✅ <strong>This page uses prepared statements</strong> - Protected against SQL injection.
+        </div>
+
+        <?php if ($is_logged_in): ?>
+            <div class="success">✅ You are logged in as: <?php echo htmlspecialchars($current_user); ?></div>
+            <form method="POST">
+                <button type="submit" name="logout" class="logout">Logout</button>
+            </form>
+        <?php else: ?>
+            <?php if ($login_error): ?>
+                <div class="error">❌ <?php echo $login_error; ?></div>
+            <?php endif; ?>
+            
+            <?php if ($login_success): ?>
+                <div class="success">✅ <?php echo $login_success; ?></div>
+            <?php endif; ?>
+
+            <div class="test-credentials">
+                <h4>Test Credentials:</h4>
+                <p>Username: admin | Password: admin123</p>
+            </div>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit">Login</button>
+            </form>
+
+            <div class="info">
+                SQL injection payloads will NOT work on this page (as expected).
+            </div>
+        <?php endif; ?>
+    </div>
+</body>
+</html>
+
+<?php
+if (isset($_POST['logout'])) {
+    session_destroy();
+    header("Location: login_secure.php");
+    exit;
+}
+$conn->close();
+?>
+```
+
+---
+
+## Step 4: Testing Dashboard
+
+### File: `/var/www/html/test_dashboard.php`
+
+View all login attempts and their results.
+
+```php
+<?php
+session_start();
+
+$host = 'localhost';
+$db = 'testlab';
+$user = 'root';
+$pass = 'root_password';
+
+$conn = new mysqli($host, $user, $pass, $db);
+
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Get all login attempts
+$result = $conn->query("SELECT * FROM login_attempts ORDER BY attempt_time DESC LIMIT 50");
+
+?>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dashboard - Login Attempts</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 5px; }
+        h1 { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f8f9fa; font-weight: bold; }
+        tr:hover { background: #f9f9f9; }
+        .success { background: #d4edda; }
+        .failed { background: #f8d7da; }
+        .payload { font-family: monospace; font-size: 11px; word-break: break-all; }
+        button { padding: 10px 20px; background: #dc3545; color: white; border: none; cursor: pointer; border-radius: 3px; margin-top: 20px; }
+        button:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Login Attempts Dashboard</h1>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Password/Payload</th>
+                    <th>Source IP</th>
+                    <th>Status</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php while ($row = $result->fetch_assoc()): ?>
+                    <tr class="<?php echo $row['success'] ? 'success' : 'failed'; ?>">
+                        <td><?php echo $row['id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['username']); ?></td>
+                        <td class="payload"><?php echo htmlspecialchars($row['password_attempt']); ?></td>
+                        <td><?php echo $row['source_ip']; ?></td>
+                        <td><?php echo $row['success'] ? '✅ Success' : '❌ Failed'; ?></td>
+                        <td><?php echo $row['attempt_time']; ?></td>
+                    </tr>
+                <?php endwhile; ?>
+            </tbody>
+        </table>
+
+        <button onclick="location.href='test_dashboard.php'">Refresh</button>
+        <button onclick="if(confirm('Clear all attempts?')) { fetch('clear_attempts.php'); location.reload(); }">Clear Attempts</button>
+    </div>
+</body>
+</html>
+
+<?php $conn->close(); ?>
+```
+
+---
+
+## Step 5: Web Server Configuration
+
+### Apache Configuration
+
+```bash
+# Enable PHP module
+sudo a2enmod php7.4
+sudo a2enmod rewrite
+
+# Create directory
+sudo mkdir -p /var/www/html/test-lab
+sudo chown -R www-data:www-data /var/www/html/test-lab
+
+# Copy files
+sudo cp login_vulnerable.php /var/www/html/test-lab/
+sudo cp login_secure.php /var/www/html/test-lab/
+sudo cp test_dashboard.php /var/www/html/test-lab/
+
+# Restart Apache
+sudo systemctl restart apache2
+```
+
+### Nginx Configuration (Alternative)
+
+```nginx
+server {
+    listen 80;
+    server_name testlab.local;
+    root /var/www/html/test-lab;
+
+    location ~ \.php$ {
+        fastcgi_pass unix:/var/run/php-fpm.sock;
+        fastcgi_index index.php;
+        include fastcgi_params;
+    }
+}
+```
+
+---
+
+## Step 6: Test SQL Injection Payloads
+
+### Access Your Test Pages
+
+```
+http://your_server_ip/test-lab/login_vulnerable.php
+http://your_server_ip/test-lab/login_secure.php
+http://your_server_ip/test-lab/test_dashboard.php
+```
+
+### Test Payloads
+
+**Boolean-Based SQLi:**
+```
+Username: admin' OR 1=1 --
+Password: anything
+
+Username: admin' OR 'a'='a
+Password: anything
+
+Username: ' OR 1=1 #
+Password: anything
+```
+
+**UNION-Based:**
+```
+Username: ' UNION SELECT username, password FROM users --
+Password: anything
+
+Username: ' UNION SELECT NULL, NULL FROM users--
+Password: anything
+```
+
+**Time-Based Blind:**
+```
+Username: admin' AND SLEEP(5) --
+Password: anything
+
+Username: admin' AND BENCHMARK(10000000, SHA1('test')) --
+Password: anything
+```
+
+**Comment Injection:**
+```
+Username: admin' --
+Password: anything
+
+Username: admin' #
+Password: anything
+
+Username: admin' /*
+Password: anything
+```
+
+---
+
+## Step 7: Monitor Suricata Alerts
+
+### Terminal 1: Watch Suricata Alerts
+
+```bash
+# Follow eve.json in real-time
+tail -f /var/log/suricata/eve.json | jq 'select(.alert.signature_id >= 1000200 and .alert.signature_id <= 1000232)'
+
+# Pretty print
+tail -f /var/log/suricata/eve.json | jq '.alert | {signature_id, msg}'
+```
+
+### Terminal 2: Test SQL Injection
+
+```bash
+# Using curl to send payloads
+curl "http://testlab.local/test-lab/login_vulnerable.php" \
+  -X POST \
+  -d "username=admin' OR 1=1 --&password=test"
+
+curl "http://testlab.local/test-lab/login_vulnerable.php" \
+  -X POST \
+  -d "username=admin' AND SLEEP(5) --&password=test"
+
+curl "http://testlab.local/test-lab/login_vulnerable.php" \
+  -X POST \
+  -d "username=admin' UNION SELECT username, password FROM users --&password=test"
+```
+
+### Terminal 3: View Suricata Logs
+
+```bash
+# Check for specific SIDs
+sudo tail -f /var/log/suricata/suricata.log | grep "sid:100"
+
+# Count alerts by type
+sudo tail -f /var/log/suricata/eve.json | jq -r '.alert.msg' | sort | uniq -c
+```
+
+---
+
+## Complete Testing Workflow
+
+```
+┌─────────────────────────────────────────┐
+│ 1. Start Services                       │
+├─────────────────────────────────────────┤
+│ - MySQL running                         │
+│ - Apache/Nginx running                  │
+│ - Suricata running with SQL rules       │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│ 2. Open Three Terminals                 │
+├─────────────────────────────────────────┤
+│ Term 1: tail -f suricata eve.json        │
+│ Term 2: Browser to login page            │
+│ Term 3: curl payloads                    │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│ 3. Send SQL Injection Payload            │
+├─────────────────────────────────────────┤
+│ Username: admin' OR 1=1 --               │
+│ Password: test                           │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│ 4. Check Suricata Alert (Term 1)         │
+├─────────────────────────────────────────┤
+│ ✅ Should see: SQL Injection - OR 1=1    │
+│    SID: 1000200                          │
+└─────────────────────────────────────────┘
+                    ↓
+┌─────────────────────────────────────────┐
+│ 5. View Dashboard (Term 2)               │
+├─────────────────────────────────────────┤
+│ http://testlab.local/test_dashboard.php │
+│ Shows all login attempts                 │
+└─────────────────────────────────────────┘
+```
+
+---
+
+## Quick Start Script
+
+### File: `setup_testlab.sh`
+
+```bash
+#!/bin/bash
+
+echo "🚀 Setting up SQL Injection Test Lab..."
+
+# Create database
+mysql -u root -p <<EOF
+CREATE DATABASE IF NOT EXISTS testlab;
+USE testlab;
+
+CREATE TABLE IF NOT EXISTS users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100),
+  role VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, password, email, role) VALUES
+('admin', 'admin123', 'admin@test.local', 'admin'),
+('user1', 'pass123', 'user1@test.local', 'user'),
+('user2', 'pass456', 'user2@test.local', 'user');
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100),
+  password_attempt VARCHAR(255),
+  source_ip VARCHAR(45),
+  success BOOLEAN,
+  attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+EOF
+
+# Create web directory
+sudo mkdir -p /var/www/html/test-lab
+sudo chown -R www-data:www-data /var/www/html/test-lab
+
+echo "✅ Database and directories created"
+echo "📝 Next: Copy login_vulnerable.php to /var/www/html/test-lab/"
+echo "🌐 Access at: http://your_ip/test-lab/login_vulnerable.php"
+```
+
+Run it:
+```bash
+chmod +x setup_testlab.sh
+sudo ./setup_testlab.sh
+```
+
+---
+
+## What to Test
+
+| SID | Payload | Expected Alert |
+|-----|---------|-----------------|
+| 1000200 | `admin' OR 1=1 --` | SQL Injection - OR 1=1 |
+| 1000201 | `admin' AND 1=1 --` | SQL Injection - AND boolean |
+| 1000202 | `admin' OR 'a'='a` | SQL Injection - OR string |
+| 1000208 | `' UNION SELECT ...` | SQL Injection - UNION SELECT |
+| 1000210 | `' AND SLEEP(5) --` | SQL Injection - SLEEP() |
+| 1000211 | `' AND BENCHMARK(...) --` | SQL Injection - BENCHMARK() |
+| 1000214 | `' EXTRACTVALUE(...) --` | SQL Injection - EXTRACTVALUE() |
+| 1000220 | `' UNION INTO OUTFILE --` | SQL Injection - INTO OUTFILE |
+| 1000223 | `'; xp_cmdshell --` | SQL Injection - xp_cmdshell |
+
+---
+
+## Troubleshooting
+
+### No alerts showing?
+```bash
+# Check Suricata is running
+sudo systemctl status suricata
+
+# Check rules are loaded
+sudo grep "sql_injection" /var/log/suricata/suricata.log
+
+# Verify traffic is being captured
+sudo suricata -T -c /etc/suricata/suricata.yaml
+```
+
+### PHP errors?
+```bash
+# Check PHP error log
+sudo tail -f /var/log/apache2/error.log
+
+# Test PHP
+php -r "echo 'PHP works';"
+```
+
+### Database connection issues?
+```bash
+# Test MySQL
+mysql -u root -p testlab -e "SELECT * FROM users;"
+
+# Check MySQL is running
+sudo systemctl status mysql
+```
+
+---
+
+## Security Notes
+
+⚠️ **IMPORTANT:**
+- ✅ Use ONLY in isolated lab environment
+- ✅ NEVER on production servers
+- ✅ Create firewall rules to limit access
+- ✅ Use VM snapshot for quick resets
+- ✅ Restart services between tests
+- ✅ Clear logs after testing
+
+---
+
+**Your test lab is now ready to validate SQL injection rules!** 🎯

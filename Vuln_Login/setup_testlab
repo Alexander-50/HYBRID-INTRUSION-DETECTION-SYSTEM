@@ -1,0 +1,160 @@
+#!/bin/bash
+
+# SQL Injection Test Lab - Quick Setup Script
+# Usage: sudo bash setup_testlab.sh
+
+set -e
+
+echo "=================================="
+echo "SQL Injection Test Lab Setup"
+echo "=================================="
+
+# Check if running as root
+if [[ $EUID -ne 0 ]]; then
+   echo "❌ This script must be run as root. Use: sudo bash setup_testlab.sh"
+   exit 1
+fi
+
+# Detect web root
+if [ -d "/var/www/html" ]; then
+    WEB_ROOT="/var/www/html"
+elif [ -d "/usr/share/nginx/html" ]; then
+    WEB_ROOT="/usr/share/nginx/html"
+else
+    echo "❌ Could not find web root. Please specify: export WEB_ROOT=/path/to/web/root"
+    exit 1
+fi
+
+TEST_DIR="$WEB_ROOT/test-lab"
+
+echo ""
+echo "📝 Configuration:"
+echo "   Web Root: $WEB_ROOT"
+echo "   Test Dir: $TEST_DIR"
+echo ""
+
+# 1. Create database
+echo "[1/4] 🗄️  Setting up MySQL database..."
+
+MYSQL_HOST="localhost"
+MYSQL_USER="root"
+MYSQL_PASS="${MYSQL_PASSWORD:-root}"
+
+# Try to create database
+mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASS <<EOF 2>/dev/null || true
+CREATE DATABASE IF NOT EXISTS testlab;
+USE testlab;
+
+DROP TABLE IF EXISTS users;
+CREATE TABLE users (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100) NOT NULL UNIQUE,
+  password VARCHAR(255) NOT NULL,
+  email VARCHAR(100),
+  role VARCHAR(20),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, password, email, role) VALUES
+('admin', 'admin123', 'admin@test.local', 'admin'),
+('user1', 'pass123', 'user1@test.local', 'user'),
+('user2', 'pass456', 'user2@test.local', 'user'),
+('testuser', 'testpass', 'test@test.local', 'user');
+
+DROP TABLE IF EXISTS login_attempts;
+CREATE TABLE login_attempts (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  username VARCHAR(100),
+  password_attempt VARCHAR(255),
+  source_ip VARCHAR(45),
+  success BOOLEAN DEFAULT 0,
+  attempt_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+SHOW TABLES;
+EOF
+
+echo "✅ Database created"
+echo ""
+
+# 2. Create test directory
+echo "[2/4] 📁 Creating test directory..."
+
+mkdir -p "$TEST_DIR"
+chown -R www-data:www-data "$TEST_DIR" 2>/dev/null || chown -R nginx:nginx "$TEST_DIR" 2>/dev/null || true
+chmod 755 "$TEST_DIR"
+
+echo "✅ Directory created: $TEST_DIR"
+echo ""
+
+# 3. Verify PHP files exist
+echo "[3/4] 📄 Checking PHP files..."
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ -f "$SCRIPT_DIR/login_vulnerable.php" ]; then
+    echo "   ℹ️  login_vulnerable.php found"
+    cp "$SCRIPT_DIR/login_vulnerable.php" "$TEST_DIR/"
+    chmod 644 "$TEST_DIR/login_vulnerable.php"
+else
+    echo "   ⚠️  login_vulnerable.php not found in $SCRIPT_DIR"
+fi
+
+if [ -f "$SCRIPT_DIR/login_secure.php" ]; then
+    echo "   ℹ️  login_secure.php found"
+    cp "$SCRIPT_DIR/login_secure.php" "$TEST_DIR/"
+    chmod 644 "$TEST_DIR/login_secure.php"
+else
+    echo "   ⚠️  login_secure.php not found in $SCRIPT_DIR"
+fi
+
+echo "✅ PHP files copied"
+echo ""
+
+# 4. Verify Suricata rules
+echo "[4/4] 🛡️  Checking Suricata rules..."
+
+if [ -f "/etc/suricata/rules/sql_injection_rules_CLEAN_1000200.rules" ]; then
+    echo "✅ Suricata rules found: /etc/suricata/rules/sql_injection_rules_CLEAN_1000200.rules"
+else
+    echo "⚠️  Suricata rules not found at /etc/suricata/rules/sql_injection_rules_CLEAN_1000200.rules"
+    echo "   Copy your ruleset to: /etc/suricata/rules/"
+fi
+
+if grep -q "sql_injection_rules_CLEAN_1000200" /etc/suricata/suricata.yaml 2>/dev/null; then
+    echo "✅ Rules configured in suricata.yaml"
+else
+    echo "⚠️  Rules not configured in suricata.yaml"
+    echo "   Add this line to /etc/suricata/suricata.yaml:"
+    echo "   - sql_injection_rules_CLEAN_1000200.rules"
+fi
+
+echo ""
+echo "=================================="
+echo "✅ Setup Complete!"
+echo "=================================="
+echo ""
+echo "📝 Next Steps:"
+echo ""
+echo "1. Access the vulnerable login page:"
+echo "   http://YOUR_SERVER_IP/test-lab/login_vulnerable.php"
+echo ""
+echo "2. Open Terminal 1 - Monitor Suricata alerts:"
+echo "   tail -f /var/log/suricata/eve.json | jq 'select(.alert.signature_id >= 1000200)'"
+echo ""
+echo "3. Open Terminal 2 - Test SQL injection:"
+echo "   curl -X POST http://YOUR_SERVER_IP/test-lab/login_vulnerable.php \\"
+echo "     -d \"username=admin' OR 1=1 --&password=test\""
+echo ""
+echo "4. Check alerts from Suricata (should see SID: 1000200)"
+echo ""
+echo "📚 Reference:"
+echo "   - Test payloads: Read SQL_INJECTION_TEST_PAYLOADS.md"
+echo "   - Setup details: Read TEST_LOGIN_PAGE_SETUP.md"
+echo ""
+echo "🔐 Compare:"
+echo "   Vulnerable: http://YOUR_SERVER_IP/test-lab/login_vulnerable.php"
+echo "   Secure:     http://YOUR_SERVER_IP/test-lab/login_secure.php"
+echo ""
+echo "⚠️  Remember: This is for testing ONLY. Never use vulnerable code in production!"
+echo ""
