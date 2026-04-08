@@ -86,7 +86,7 @@ pip install -r requirements.txt
 sudo suricata -c SIDS/suricata.yaml -i <interface>
 
 # Run ML Detection (AIDS)
-python3 AIDS_module/detection_script.py
+python3 AIDS_module/sniffer.py
 ```
 
 ---
