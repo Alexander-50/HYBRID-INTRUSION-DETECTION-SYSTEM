@@ -34,11 +34,11 @@ The system is tested against real-world attack scenarios:
 * Nmap aggressive scanning
 * vaious types of SQL Injection attacks
 * Flood based DoS attacks
-      * TCP flood
-      * UDP flood
-      * TCP-SYN flood
-      * TCP-ACK flood
-      * TCP-FIN flood  
+   * TCP flood
+   * UDP flood
+   * TCP-SYN flood
+   * TCP-ACK flood
+   * TCP-FIN flood  
 * Custom payload-based intrusions
 
 ---
@@ -53,8 +53,9 @@ The system is tested against real-world attack scenarios:
 ### 🔹 AIDS (Machine Learning)
 
 * Detects anomalies beyond known signatures
-* Lightweight model suitable for IoT constraints
+* Lightweight Ensemble model suitable for IoT constraints as well as lower False Positive Rate
 * Works alongside Suricata for hybrid detection
+  
 
 ---
 
