@@ -18,11 +18,11 @@ The system operates at the **network gateway level**, monitoring traffic between
         ↓
 Target / IoT Device
         ↓
-Gateway IDS (172.20.0.2)
+Gateway IDS 
    ├── Suricata (SIDS)
    └── ML Engine (AIDS)
-        ↓
-   Alerts / Logs / Detection Output
+        ↓  (OR Logic)
+   Alerts / Logs / Detection Output 
 ```
 
 ---
