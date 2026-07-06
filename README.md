@@ -103,12 +103,22 @@ scripts/            # Integration / helper scripts
 
 ---
 
-## 📸 Demo (To Be Added)
 
-* Suricata alerts (eve.json samples)
-* Attack execution logs
-* Detection outputs
+<img width="1826" height="995" alt="Screenshot from 2026-03-27 17-50-45" src="https://github.com/user-attachments/assets/571af33e-9b10-43d8-9256-57a4d43d3d0a" />
 
+                                                  CUSTOM-BUILT DASHBOARD PREVIEW SHOWING ALERTS
+
+
+
+---
+<img width="1843" height="999" alt="Screenshot from 2026-03-25 13-55-31" src="https://github.com/user-attachments/assets/2add9a6d-50d7-444e-8ccb-bed32caaebba" />
+
+                                                  VULNERABLE WEBSITE FOR SQLI TESTING
+---
+
+---
+
+---
 ---
 
 ## 🧠 Real-World Use Case
