@@ -32,8 +32,13 @@ Gateway IDS (172.20.0.2)
 The system is tested against real-world attack scenarios:
 
 * Nmap aggressive scanning
-* SQL Injection attacks
-* DoS / Flood attacks
+* vaious types of SQL Injection attacks
+* Flood based DoS attacks
+      * TCP flood
+      * UDP flood
+      * TCP-SYN flood
+      * TCP-ACK flood
+      * TCP-FIN flood  
 * Custom payload-based intrusions
 
 ---
@@ -41,8 +46,7 @@ The system is tested against real-world attack scenarios:
 ## 📊 Detection Capabilities
 
 ### 🔹 SIDS (Suricata)
-
-* Custom rule-based detection
+* Custom rule creation and detection for wide range of attacks
 * Protocol analysis (HTTP, TCP, etc.)
 * Real-time alert generation
 
@@ -106,14 +110,14 @@ scripts/            # Integration / helper scripts
 
 <img width="1826" height="995" alt="Screenshot from 2026-03-27 17-50-45" src="https://github.com/user-attachments/assets/571af33e-9b10-43d8-9256-57a4d43d3d0a" />
 
-                                                  CUSTOM-BUILT DASHBOARD PREVIEW SHOWING ALERTS
+                                                  CUSTOM-BUILT DASHBOARD PREVIEW SHOWING REAL TIME ALERT GENERATION
 
 
 
 ---
 <img width="1843" height="999" alt="Screenshot from 2026-03-25 13-55-31" src="https://github.com/user-attachments/assets/2add9a6d-50d7-444e-8ccb-bed32caaebba" />
 
-                                                  VULNERABLE WEBSITE FOR SQLI TESTING
+                                                           VULNERABLE WEBSITE FOR SQLI TESTING
 ---
 
 ---
@@ -137,4 +141,8 @@ Logs, PCAP files, and runtime data are excluded from this repository to maintain
 
 ---
 
+IF U ARE INTERESTED TO KNOW MORE DETAILS ON THIS RESEARCH PROJECT OR FOR COLLABORATION CONTACT :
+pbalexander69@gmail.com
+Alexander P.B
+Cybersecurity Researcher 
 
