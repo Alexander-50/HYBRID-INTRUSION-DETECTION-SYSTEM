@@ -143,7 +143,7 @@ Logs, PCAP files, and runtime data are excluded from this repository to maintain
 ---
 
 IF U ARE INTERESTED TO KNOW MORE DETAILS ON THIS RESEARCH PROJECT OR FOR COLLABORATION CONTACT :
-pbalexander69@gmail.com
-Alexander P.B
-Cybersecurity Researcher 
+ pbalexander69@gmail.com  
+ Alexander P.B   
+ Cybersecurity Researcher 
 
