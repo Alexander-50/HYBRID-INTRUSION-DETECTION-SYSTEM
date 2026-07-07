@@ -13,17 +13,8 @@ The system operates at the **network gateway level**, monitoring traffic between
 
 ## 🧠 Architecture
 
-```
-     Attacker
-        ↓
-Target / IoT Device
-        ↓
-Gateway IDS 
-   ├── Suricata (SIDS)
-   └── ML Engine (AIDS)
-        ↓  (OR Logic)
-   Alerts / Logs / Detection Output 
-```
+<img width="1175" height="962" alt="image" src="https://github.com/user-attachments/assets/557e896a-4ee1-4776-8f1d-270e89c3ffc6" />
+
 
 ---
 
