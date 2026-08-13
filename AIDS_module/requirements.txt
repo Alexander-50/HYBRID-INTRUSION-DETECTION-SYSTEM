@@ -1,5 +1,8 @@
-pandas
-numpy
-requests
-joblib
-scapy
+joblib==1.5.3
+lightgbm
+numpy==2.4.3
+pandas==3.0.1
+requests==2.32.5
+scapy==2.7.0
+scikit-learn
+xgboost
