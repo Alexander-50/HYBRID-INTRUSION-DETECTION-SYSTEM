@@ -82,7 +82,7 @@ The system operates at the **network gateway level**, allowing traffic between e
                     │  Correlation Engine│
                     │                     │
                     │    SIDS ──┐        │
-                    │            ├──► AND ───► Correlated
+                    │            ├──► OR ───► Correlated
                     │    AIDS ──┘             Attack
                     └──────────┬──────────┘
                                │
@@ -133,7 +133,7 @@ The system correlates events by matching source IP, destination IP, attack type 
                     │
                     ▼
                  ┌─────┐
-                 │ AND │──────► Correlated Attack
+                 │ OR  │──────► Correlated Attack
                  └─────┘
                     ▲
                     │
